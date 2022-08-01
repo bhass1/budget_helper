@@ -16,7 +16,7 @@ Tired of tediously categorizing my past expenses every couple months. Often it's
 
 ```
 docker build . -t budget_helper
-docker run --rm -it budget_helper
+docker run --rm -it -v $PWD/output:/usr/app/src/output budget_helper
 ```
 
 ### Architecture
