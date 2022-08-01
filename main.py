@@ -17,6 +17,9 @@ def main():
 
     print(df_csv)
 
+    df_csv = pd.read_csv('test/test-amex-credit-01.csv')
+
+    print(df_csv)
 
 if __name__=="__main__":
     main()
