@@ -16,9 +16,10 @@ Tired of tediously categorizing my past expenses every couple months. Often it's
 
 ```
 docker build . -t budget_helper
-docker run --rm -it -v $PWD/output:/usr/app/src/output budget_helper
+docker run --rm -it -v /home/bill/source/budget_helper/output:/usr/app/src/output -v /home/bill/source/budget_helper/test:/usr/app/src/test budget_helper python ./main.py test/test-simple/test-categories.yml test/test-simple/test-amex-credit-simple.csv test/test-simple/test-chase-credit-simple.csv test/test-simple/out-simple.xlsx
 ```
 
 ### Architecture
 
 ![](./budgetHelper-Architecture.drawio.svg)
+

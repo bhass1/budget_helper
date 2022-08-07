@@ -10,4 +10,4 @@ RUN pip install --root-user-action=ignore --no-cache-dir -r requirements.txt
 COPY main.py ./
 COPY test/ ./test/
 
-CMD [ "python", "./main.py" ]
+CMD [ "python", "./main.py"]
