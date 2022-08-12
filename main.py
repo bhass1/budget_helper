@@ -1,8 +1,15 @@
+from pathlib import Path
 import pandas as pd
 import logging
 import yaml
 import difflib
 import click
+
+class ExpenseCategorizer:
+    def __init__(self, category_map, bank_files, output):
+        self.cat_map = category_map
+        self.bank_files = bank_files
+        self.output = output
 
 NORM_COLS = ['TransactionDate', 'Description', 'Amount']
 
@@ -43,7 +50,11 @@ def normalize_database(df_bank_db):
 @click.command()
 @click.argument('category_map', type=click.Path(exists=True), nargs=1)
 @click.argument('bank_files', type=click.Path(exists=True), nargs=-1)
-@click.argument('output', type=click.Path(), nargs=1)
+@click.argument('output', type=click.Path(
+                                dir_okay=False,
+                                writable=True,
+                                path_type=Path
+                                ), nargs=1)
 def main(category_map, bank_files, output):
   """A CLI to help categorize exported expense databases from your bank"""
 
@@ -91,14 +102,14 @@ def main(category_map, bank_files, output):
     if df_norm_super.empty:
       df_norm_super = df_norm
     else:
-      df_norm_super = pd.concat([df_norm_super, df_norm])
+      df_norm_super = pd.concat([df_norm_super, df_norm], ignore_index=True)
     logging.debug(f'DF_NORM: {df_norm}') 
     logging.debug(f'DF_NORM_SUPER: {df_norm_super}') 
 
   #Split out the normalized and categorized data frame into different months
   df_norm_months = []
   for mo in range(12):
-    df_norm_months.append(df_norm[df_norm_super[NORM_COLS[0]].dt.month == mo+1])
+    df_norm_months.append(df_norm_super[df_norm_super[NORM_COLS[0]].dt.month == mo+1])
 
   logging.debug(f'DF_NORM_MONTHS {df_norm_months}') 
 
@@ -109,7 +120,10 @@ def main(category_map, bank_files, output):
   month_labels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", 
     "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
-  with pd.ExcelWriter(click.format_filename(output),
+  output.parent.mkdir(parents=True, exist_ok=True)
+
+  logging.info(f'Writing output to {output}')
+  with pd.ExcelWriter(output,
     mode="w",
     #mode="a",
     #if_sheet_exists="overlay",
