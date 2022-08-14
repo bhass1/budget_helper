@@ -16,7 +16,7 @@ Tired of tediously categorizing my past expenses every couple months. Often it's
 
 ```
 docker build . -t budget_helper
-docker run --rm -it -v /home/bill/source/budget_helper/output:/usr/src/app/output -v /home/bill/source/budget_helper/test:/usr/src/app/test budget_helper python ./main.py test/test-simple/test-categories.yml test/test-simple/test-amex-credit-simple.csv test/test-simple/test-chase-credit-simple.csv output/test-simple/out-simple.xlsx
+docker run --rm -it -v $PWD/output:/usr/src/app/output budget_helper python ./main.py test/test-simple/test-categories.yml test/test-simple/test-amex-credit-simple.csv test/test-simple/test-chase-credit-simple.csv output/test-simple/out-simple.xlsx
 ```
 
 ### Architecture
