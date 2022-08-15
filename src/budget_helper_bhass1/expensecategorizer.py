@@ -69,6 +69,14 @@ class ExpenseCategorizer:
             best_match['cat'] = cat
             best_match['match'] = key
             best_match['size'] = match_size
+          elif match_size > 1 and match_size == best_match['size']:
+          # FIXME: Kroger shouldn't match kroger fuel; check against other keys in category_map
+          # if match_size is equal, break tie by looking at other keys in category map for equal (?) match
+          # kroger matches "kroger fuel" by 6 and "kroger' by 6. Keep "kroger" because it's more exact??
+            if len(key) == match_size:
+              best_match['cat'] = cat
+              best_match['match'] = key
+              best_match['size'] = match_size
 
       logging.debug(f'Found best match: {merch} = {best_match}')
       bh_category.append(best_match['cat'])
