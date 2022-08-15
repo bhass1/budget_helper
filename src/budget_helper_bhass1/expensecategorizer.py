@@ -16,7 +16,7 @@ class ExpenseCategorizer:
       self.merchant_map = yaml.safe_load(file)
     logging.debug(self.merchant_map)
 
-  def normalize_database(self, df_bank_db):
+  def _normalize_database(self, df_bank_db):
     """ Given a DataFrame, normalize to three columns: TransactionDate, Description, and Amount """
     logging.debug('DataFrame columns', df_bank_db.columns)
     logging.info('Detecting format of input file...')
@@ -50,6 +50,32 @@ class ExpenseCategorizer:
     
     return df_norm
 
+  def _categorize(self, df_norm):
+    bh_category = []
+    for merch in df_norm[ExpenseCategorizer._NORM_COLS[1]]:
+      merch = merch.lower()
+      logging.debug(f'Checking: {merch}')
+      best_match={'cat': "", 'match':"", 'size': 0}
+      for cat in self.merchant_map:
+        logging.debug(f'... against: {cat}')
+        for key in self.merchant_map[cat]:
+          key = key.lower()
+          logging.debug(f'... looking at: {key}')
+          s = difflib.SequenceMatcher(lambda x: x in ' ', merch, key)
+          longest_match = s.find_longest_match()
+          match_size = longest_match.size
+          logging.debug(f'... longest match length is: {match_size}')
+          if match_size > 1 and match_size > best_match['size']:
+            best_match['cat'] = cat
+            best_match['match'] = key
+            best_match['size'] = match_size
+
+      logging.debug(f'Found best match: {merch} = {best_match}')
+      bh_category.append(best_match['cat'])
+
+    df_norm = df_norm.assign(BH_Category=bh_category)
+    return df_norm
+
   def one_shot(self):
   
     df_norm_super = pd.DataFrame()
@@ -59,33 +85,12 @@ class ExpenseCategorizer:
   
       logging.debug(df_bank_db)
   
-      df_norm = self.normalize_database(df_bank_db)
+      df_norm = self._normalize_database(df_bank_db)
   
       logging.debug(df_norm)
   
-      bh_category = []
-      for merch in df_norm[ExpenseCategorizer._NORM_COLS[1]]:
-        merch = merch.lower()
-        logging.debug(f'Checking: {merch}')
-        best_match={'cat': "", 'match':"", 'size': 0}
-        for cat in self.merchant_map:
-          logging.debug(f'... against: {cat}')
-          for key in self.merchant_map[cat]:
-            key = key.lower()
-            logging.debug(f'... looking at: {key}')
-            s = difflib.SequenceMatcher(lambda x: x in ' ', merch, key)
-            longest_match = s.find_longest_match()
-            match_size = longest_match.size
-            logging.debug(f'... longest match length is: {match_size}')
-            if match_size > 1 and match_size > best_match['size']:
-              best_match['cat'] = cat
-              best_match['match'] = key
-              best_match['size'] = match_size
-      
-        logging.debug(f'Found best match: {merch} = {best_match}')    
-        bh_category.append(best_match['cat'])
-  
-      df_norm = df_norm.assign(BH_Category=bh_category)
+      df_norm = self._categorize(df_norm)
+
       if df_norm_super.empty:
         df_norm_super = df_norm
       else:
