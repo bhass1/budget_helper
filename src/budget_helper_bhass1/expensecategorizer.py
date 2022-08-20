@@ -3,6 +3,8 @@ import pandas as pd
 import logging
 import yaml
 
+import util
+
 class ExpenseCategorizer:
 
   _NORM_COLS = ['TransactionDate', 'Description', 'Amount']
@@ -116,11 +118,9 @@ class ExpenseCategorizer:
     logging.debug(f'{df_norm_months=}')
   
   
-    #Read in existing month data
+    #TODO FEAT: Read in existing month data and merge
     #df_existing = pd.read_excel("output/simple-out.xlsx")
   
-    month_labels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", 
-      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
   
     self.output.parent.mkdir(parents=True, exist_ok=True)
   
@@ -131,7 +131,7 @@ class ExpenseCategorizer:
       #if_sheet_exists="overlay",
     ) as writer:
       for mo in range(12):
-        logging.debug(f'Month = {month_labels[mo]}')
-        df_norm_months[mo].to_excel(writer, sheet_name=month_labels[mo], index=False)
+        logging.debug(f'Month = {util.month_labels[mo]}')
+        df_norm_months[mo].to_excel(writer, sheet_name=util.month_labels[mo], index=False)
 
 

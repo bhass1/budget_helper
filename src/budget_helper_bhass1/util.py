@@ -1,6 +1,9 @@
 import logging
 import os
 
+month_labels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
 def set_log_level():
   """ Set logging level from env var LOG_LEVEL """
   log_level = os.environ.get('LOG_LEVEL', 'INFO')
