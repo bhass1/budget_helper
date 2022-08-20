@@ -104,15 +104,16 @@ class ExpenseCategorizer:
         df_norm_super = df_norm
       else:
         df_norm_super = pd.concat([df_norm_super, df_norm], ignore_index=True)
-      logging.debug(f'DF_NORM: {df_norm}') 
-      logging.debug(f'DF_NORM_SUPER: {df_norm_super}') 
+      logging.debug(f'{df_norm=}')
+      logging.debug(f'{df_norm_super=}')
   
-    #Split out the normalized and categorized data frame into different months
+    #Sort then split out the normalized and categorized data frame into different months
+    df_norm_super.sort_values(ExpenseCategorizer._NORM_COLS[0], inplace=True)
     df_norm_months = []
     for mo in range(12):
       df_norm_months.append(df_norm_super[df_norm_super[ExpenseCategorizer._NORM_COLS[0]].dt.month == mo+1])
   
-    logging.debug(f'DF_NORM_MONTHS {df_norm_months}') 
+    logging.debug(f'{df_norm_months=}')
   
   
     #Read in existing month data
