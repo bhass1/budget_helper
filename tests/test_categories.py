@@ -6,9 +6,9 @@ import expensecategorizer as ec
 
 def test_categories_long_top_e2e(set_log, tmp_path):
   test_path = 'tests/test-categories/'
-  test_out = tmp_path / 'test-categories-long-out.xlsx'
+  test_out = tmp_path / ('test_out.xlsx')
   expenseCat = ec.ExpenseCategorizer(
-      test_path + 'test-categories-long-top.yml',
+      test_path + 'categories-long-top.yml',
       [test_path + 'test-chase-credit-short-top.csv', test_path + 'test-chase-credit-long-top.csv'],
       test_out
   )
@@ -26,10 +26,9 @@ def test_categories_long_top_e2e(set_log, tmp_path):
 
 def test_categories_short_top_e2e(set_log, tmp_path):
   test_path = 'tests/test-categories/'
-
-  test_out = tmp_path / 'test-categories-short-out.xlsx'
+  test_out = tmp_path / ('test_out.xlsx')
   expenseCat = ec.ExpenseCategorizer(
-      test_path + 'test-categories-short-top.yml',
+      test_path + 'categories-short-top.yml',
       [test_path + 'test-chase-credit-short-top.csv', test_path + 'test-chase-credit-long-top.csv'],
       test_out
   )
