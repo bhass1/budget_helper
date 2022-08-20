@@ -1,8 +1,8 @@
 from pathlib import Path
-import logging
 import click
 
 from expensecategorizer import ExpenseCategorizer
+import util
 
 
 @click.command()
@@ -16,8 +16,7 @@ from expensecategorizer import ExpenseCategorizer
 def main(category_map, bank_files, output):
   """A CLI to help categorize exported expense databases from your bank"""
 
-  logging.getLogger().setLevel(logging.DEBUG)
-
+  util.set_log_level()
 
   expenseCat = ExpenseCategorizer(
         click.format_filename(category_map),

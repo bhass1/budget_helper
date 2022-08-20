@@ -18,7 +18,7 @@ class ExpenseCategorizer:
 
   def _normalize_database(self, df_bank_db):
     """ Given a DataFrame, normalize to three columns: TransactionDate, Description, and Amount """
-    logging.debug('DataFrame columns', df_bank_db.columns)
+    logging.debug(f'DataFrame columns {df_bank_db.columns}')
     logging.info('Detecting format of input file...')
     # Detect bank db type and extract 3 relevant columns
     if df_bank_db.columns[1] == 'Post Date':
@@ -74,6 +74,7 @@ class ExpenseCategorizer:
           # if match_size is equal, break tie by looking at other keys in category map for equal (?) match
           # kroger matches "kroger fuel" by 6 and "kroger' by 6. Keep "kroger" because it's more exact??
             if len(key) == match_size:
+              logging.debug(f'... bugfix zone - match_size={match_size} best_match[size]={best_match["size"]}')
               best_match['cat'] = cat
               best_match['match'] = key
               best_match['size'] = match_size
