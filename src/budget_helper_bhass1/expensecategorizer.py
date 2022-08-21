@@ -1,6 +1,7 @@
 import difflib
 import pandas as pd
 import logging
+import re
 import yaml
 
 import util
@@ -52,36 +53,44 @@ class ExpenseCategorizer:
     
     return df_norm
 
+  def _find_best_match(in_word, word_dict):
+      logging.debug(f'{word_dict=}')
+      best_match={'cat': "", 'match':"", 'size': 0}
+      for cat in word_dict:
+        logging.debug(f'... against: {cat}')
+        for key in word_dict[cat]:
+          key = key.lower()
+          key = re.sub(' +', ' ', key)
+          logging.debug(f'... looking at: {key}')
+          s = difflib.SequenceMatcher(None, key, in_word)
+          matching_blocks = s.get_matching_blocks()
+          logging.debug(f'... {matching_blocks=}')
+          earliest_match = matching_blocks[0]
+          match_size = earliest_match.size
+          logging.debug(f'... earliest match length is: {match_size}')
+          key_match_ratio = match_size / len(key)
+          logging.debug(f'... {key_match_ratio=}')
+          # First look at high quality matches, then take the biggest
+          if key_match_ratio > 0.9:
+            if match_size > best_match['size']:
+              best_match['cat'] = cat
+              best_match['match'] = key
+              best_match['size'] = match_size
+          # Always remove category when not accurate enough
+          if best_match['size'] < 4:
+            best_match['cat'] = ''
+
+      logging.debug(f'Found best match: {in_word} = {best_match}')
+      return best_match
+
+
   def _categorize(self, df_norm):
     bh_category = []
     for merch in df_norm[ExpenseCategorizer._NORM_COLS[1]]:
       merch = merch.lower()
+      merch = re.sub(' +', ' ', merch)
       logging.debug(f'Checking: {merch}')
-      best_match={'cat': "", 'match':"", 'size': 0}
-      for cat in self.merchant_map:
-        logging.debug(f'... against: {cat}')
-        for key in self.merchant_map[cat]:
-          key = key.lower()
-          logging.debug(f'... looking at: {key}')
-          s = difflib.SequenceMatcher(lambda x: x in ' ', merch, key)
-          longest_match = s.find_longest_match()
-          match_size = longest_match.size
-          logging.debug(f'... longest match length is: {match_size}')
-          if match_size > 1 and match_size > best_match['size']:
-            best_match['cat'] = cat
-            best_match['match'] = key
-            best_match['size'] = match_size
-          elif match_size > 1 and match_size == best_match['size']:
-          # FIXME: Kroger shouldn't match kroger fuel; check against other keys in category_map
-          # if match_size is equal, break tie by looking at other keys in category map for equal (?) match
-          # kroger matches "kroger fuel" by 6 and "kroger' by 6. Keep "kroger" because it's more exact??
-            if len(key) == match_size:
-              logging.debug(f'... bugfix zone - match_size={match_size} best_match[size]={best_match["size"]}')
-              best_match['cat'] = cat
-              best_match['match'] = key
-              best_match['size'] = match_size
-
-      logging.debug(f'Found best match: {merch} = {best_match}')
+      best_match = ExpenseCategorizer._find_best_match(merch, self.merchant_map)
       bh_category.append(best_match['cat'])
 
     df_norm = df_norm.assign(BH_Category=bh_category)

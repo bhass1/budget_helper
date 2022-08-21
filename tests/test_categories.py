@@ -4,6 +4,94 @@ import logging
 
 import expensecategorizer as ec
 
+def test_categories_mid_partial(set_log):
+    merch = "black bandit"
+    key1 = "abc ack banda ccccc"
+    key2 = "xyz aaa aaaaa"
+    test_dict = {
+      'key1': [ key1 ],
+      'key2': [ key2 ]
+    }
+    expected = ''
+    best_match = ec.ExpenseCategorizer._find_best_match(merch, test_dict)
+    assert expected == best_match['cat']
+
+    test_dict['key2'] = [ "black bandit" ]
+    expected = 'key2'
+    best_match = ec.ExpenseCategorizer._find_best_match(merch, test_dict)
+    assert expected == best_match['cat']
+
+def test_categories_end_partial(set_log):
+    merch = "kega 6aaaaaaaa"
+    key1 = "abc ack 6aaaaaaaa"
+    key2 = "xyz aaa"
+    test_dict = {
+      'key1': [ key1 ],
+      'key2': [ key2 ]
+    }
+    expected = ''
+    best_match = ec.ExpenseCategorizer._find_best_match(merch, test_dict)
+    assert expected == best_match['cat']
+
+    test_dict['key2'] = [ "kega 6" ]
+    expected = 'key2'
+    best_match = ec.ExpenseCategorizer._find_best_match(merch, test_dict)
+    assert expected == best_match['cat']
+
+def test_categories_substring(set_log):
+    merch = "chicken 999"
+    key1 = "chicken fuel"
+    key2 = "chicken"
+    expected = 'key2'
+    test_dict = {
+      'key1': [ key1 ],
+      'key2': [ key2 ]
+    }
+    best_match = ec.ExpenseCategorizer._find_best_match(merch, test_dict)
+    assert expected == best_match['cat']
+
+    test_dict['key1'] = [ key2 ]
+    test_dict['key2'] = [ key1 ]
+    expected = 'key1'
+    best_match = ec.ExpenseCategorizer._find_best_match(merch, test_dict)
+    assert expected == best_match['cat']
+
+def test_categories_superstring(set_log):
+    merch = "chicken fuel #1337"
+    key1 = "chicken fuel"
+    key2 = "chicken"
+    expected = 'key1'
+    test_dict = {
+      'key1': [ key1 ],
+      'key2': [ key2 ]
+    }
+    best_match = ec.ExpenseCategorizer._find_best_match(merch, test_dict)
+    assert expected == best_match['cat']
+
+    test_dict['key1'] = [ key2 ]
+    test_dict['key2'] = [ key1 ]
+    expected = 'key2'
+    best_match = ec.ExpenseCategorizer._find_best_match(merch, test_dict)
+    assert expected == best_match['cat']
+
+def test_categories_ignoreprefix(set_log):
+    merch = "tst* lobster - drift city"
+    key1 = "chicken fuel drift city"
+    key2 = "chicken"
+    expected = ''
+    test_dict = {
+      'key1': [ key1 ],
+      'key2': [ key2 ]
+    }
+    best_match = ec.ExpenseCategorizer._find_best_match(merch, test_dict)
+    assert expected == best_match['cat']
+
+    test_dict['key2'] = [ 'lobster' ]
+    expected = 'key2'
+    best_match = ec.ExpenseCategorizer._find_best_match(merch, test_dict)
+    assert expected == best_match['cat']
+
+
 def test_categories_long_top_e2e(set_log, tmp_path):
   test_path = 'tests/test-categories/'
   test_out = tmp_path / ('test_out.xlsx')

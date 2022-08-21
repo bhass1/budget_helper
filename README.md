@@ -15,9 +15,14 @@ Tired of tediously categorizing my past expenses every couple months. Often it's
 **_Note: You need to be in the root directory of this project (e.g. via `cd budget_helper`)_**
 
 ```
-docker build . -t budget_helper
-docker run --rm -it -v $PWD/output:/usr/src/app/output budget_helper python ./src/budget_helper_bhass1/main.py tests/test-simple/test-categories.yml tests/test-simple/test-amex-credit-simple.csv tests/test-simple/test-chase-credit-simple.csv output/test-simple/out-simple.xlsx
+CAT_FILE=/path/to/file
+IN_FILES=/path/to/file
+CAT_FILE=$CAT_FILE IN_FILES=$IN_FILES ./run.sh
 ```
+
+You can also set the `LOG_LEVEL` env var to one of the
+[python logging levels](https://docs.python.org/3/library/logging.html#logging-levels)
+as a string, like so: `LOG_LEVEL='DEBUG'`.
 
 ### Testing
 
@@ -25,7 +30,7 @@ docker run --rm -it -v $PWD/output:/usr/src/app/output budget_helper python ./sr
 
 ```
 docker build . -t budget_helper
-docker run --rm -it budget_helper pytest
+docker run -e LOG_LEVEL='DEBUG' --rm -it budget_helper pytest
 ```
 
 ### Architecture
