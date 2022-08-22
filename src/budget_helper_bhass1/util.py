@@ -19,3 +19,5 @@ def set_log_level():
     logging.getLogger().setLevel(logging.DEBUG)
   elif log_level == 'NOTSET':
     logging.getLogger().setLevel(logging.NOTSET)
+  else:
+    raise ValueError(f'Bad LOG_LEVEL given: {log_level=}')
