@@ -1,10 +1,27 @@
 import difflib
+from enum import Enum, auto
 import pandas as pd
 import logging
 import re
 import yaml
 
 import util
+
+class BankDb(Enum):
+  CHASE_CREDIT = ['Transaction Date','Post Date','Description','Category','Type','Amount','Memo']
+  CHASE_SAVING = ['Details','Posting Date','Description','Amount','Type','Balance','Check or Slip #']
+  AMEX_CREDIT = ['Date', 'Description', 'Card Member', 'Account #', 'Amount']
+  UNKNOWN = []
+
+  @staticmethod
+  def detect_bank(columns):
+    for bank in BankDb:
+      try:
+        if columns == bank.value:
+          return bank
+      except ValueError:
+        pass
+    return BankDb.UNKNOWN
 
 class ExpenseCategorizer:
 
@@ -19,31 +36,42 @@ class ExpenseCategorizer:
       self.merchant_map = yaml.safe_load(file)
     logging.debug(self.merchant_map)
 
+  @staticmethod
+  def _detect_bank(columns):
+      detected_bank = BankDb.detect_bank(columns)
+      logging.info(f'Detected bank format {detected_bank.name}')
+      return detected_bank
+
   def _normalize_database(self, df_bank_db):
     """ Given a DataFrame, normalize to three columns: TransactionDate, Description, and Amount """
     logging.debug(f'DataFrame columns {df_bank_db.columns}')
     logging.info('Detecting format of input file...')
     # Detect bank db type and extract 3 relevant columns
-    if df_bank_db.columns[1] == 'Post Date':
-      logging.info('Detected Chase Credit format')
+    detected_bank = ExpenseCategorizer._detect_bank(df_bank_db.columns.tolist())
+    if detected_bank == BankDb.CHASE_CREDIT:
       df_norm = pd.DataFrame({
                 ExpenseCategorizer._NORM_COLS[0]: df_bank_db['Transaction Date'], 
                 ExpenseCategorizer._NORM_COLS[1]: df_bank_db['Description'], 
                 ExpenseCategorizer._NORM_COLS[2]: df_bank_db['Amount']
                 })
-    elif df_bank_db.columns[2] == 'Card Member':
-      logging.info('Detected American Express Credit format')
+    elif detected_bank == BankDb.AMEX_CREDIT:
       df_norm = pd.DataFrame({
                 ExpenseCategorizer._NORM_COLS[0]: df_bank_db['Date'], 
                 ExpenseCategorizer._NORM_COLS[1]: df_bank_db['Description'], 
                 ExpenseCategorizer._NORM_COLS[2]: df_bank_db['Amount']
                 })
       df_norm[ExpenseCategorizer._NORM_COLS[2]] = df_norm[ExpenseCategorizer._NORM_COLS[2]].apply(lambda x: -1*x)
+    elif detected_bank == BankDb.CHASE_SAVING:
+      df_norm = pd.DataFrame({
+                ExpenseCategorizer._NORM_COLS[0]: df_bank_db['Posting Date'],
+                ExpenseCategorizer._NORM_COLS[1]: df_bank_db['Description'],
+                ExpenseCategorizer._NORM_COLS[2]: df_bank_db['Amount']
+                })
     else:
-      raise NotImplementedError('Unknown input file format')
+      raise NotImplementedError(f'Unknown input file format for {detected_bank=}')
     
     #Remove rows that are positive
-    df_norm = df_norm[df_norm.Amount < 0]
+    #df_norm = df_norm[df_norm.Amount < 0] #FIXME: Do we really want to do this?
     #Force datetime type on TransactionDate column
     df_norm[ExpenseCategorizer._NORM_COLS[0]] = pd.to_datetime(df_norm.TransactionDate)
     
@@ -101,7 +129,7 @@ class ExpenseCategorizer:
     df_norm_super = pd.DataFrame()
   
     for in_file in self.bank_files:
-      df_bank_db = pd.read_csv(in_file)
+      df_bank_db = pd.read_csv(in_file, index_col=False)
   
       logging.debug(df_bank_db)
   
