@@ -8,7 +8,7 @@ import yaml
 import util
 
 class BankDb(Enum):
-  CHASE_CREDIT = ['Transaction Date','Post Date','Description','Category','Type','Amount','Memo']
+  CHASE_CREDIT = ['Card', 'Transaction Date','Post Date','Description','Category','Type','Amount','Memo']
   CHASE_SAVING = ['Details','Posting Date','Description','Amount','Type','Balance','Check or Slip #']
   AMEX_CREDIT = ['Date', 'Description', 'Card Member', 'Account #', 'Amount']
   UNKNOWN = []
