@@ -2,7 +2,7 @@
 
 ## Motivation
 
-Tired of tediously categorizing my past expenses every couple months. Often it's a simple mapping to a category based on where I shop (e.g. Home Depot => House & Living).
+Tired of tediously categorizing my past expenses every couple months. Often it's a simple mapping to a category based on where I shop (e.g. Home Depot => Home Improvement).
 
 ## Development
 
