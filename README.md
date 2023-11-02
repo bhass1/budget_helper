@@ -16,8 +16,8 @@ Tired of tediously categorizing my past expenses every couple months. Often it's
 
 ```
 CAT_FILE=/path/to/file
-IN_FILES=/path/to/file
-CAT_FILE=$CAT_FILE IN_FILES=$IN_FILES ./run.sh
+IN_FOLDER=/path/to/input_files/
+CAT_FILE=$CAT_FILE IN_FOLDER=$IN_FOLDER ./run.sh
 ```
 
 You can also set the `LOG_LEVEL` env var to one of the
