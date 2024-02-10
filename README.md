@@ -16,7 +16,7 @@ Tired of tediously categorizing my past expenses every couple months. Often it's
 
 ```
 CAT_FILE=/path/to/file
-IN_FILES=/path/to/file
+IN_FILES="/path/to/file1 /path/to/file2"
 CAT_FILE=$CAT_FILE IN_FILES=$IN_FILES ./run.sh
 ```
 
