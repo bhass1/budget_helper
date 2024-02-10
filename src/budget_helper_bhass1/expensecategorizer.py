@@ -8,13 +8,15 @@ import yaml
 import util
 
 class BankDb(Enum):
-  CHASE_CREDIT = ['Transaction Date','Post Date','Description','Category','Type','Amount','Memo']
+  CHASE_CREDIT_0 = ['Card', 'Transaction Date','Post Date','Description','Category','Type','Amount','Memo']
+  CHASE_CREDIT_1 = ['Transaction Date','Post Date','Description','Category','Type','Amount','Memo']
   CHASE_SAVING_CHECKING = ['Details','Posting Date','Description','Amount','Type','Balance','Check or Slip #']
   AMEX_CREDIT = ['Date', 'Description', 'Card Member', 'Account #', 'Amount']
   UNKNOWN = []
 
   @staticmethod
   def detect_bank(columns):
+    logging.debug(f'Using {columns} for bank detection')
     for bank in BankDb:
       try:
         if columns == bank.value:
@@ -48,8 +50,9 @@ class ExpenseCategorizer:
     logging.info('Detecting format of input file...')
     # Detect bank db type and extract 3 relevant columns
     detected_bank = ExpenseCategorizer._detect_bank(df_bank_db.columns.tolist())
-    if detected_bank == BankDb.CHASE_CREDIT:
-      df_data = pd.DataFrame({
+    if (detected_bank == BankDb.CHASE_CREDIT_0 or 
+        detected_bank == BankDb.CHASE_CREDIT_1):
+      df_norm = pd.DataFrame({
                 ExpenseCategorizer._NORM_COLS[0]: df_bank_db['Transaction Date'], 
                 ExpenseCategorizer._NORM_COLS[1]: df_bank_db['Description'], 
                 ExpenseCategorizer._NORM_COLS[2]: df_bank_db['Amount']

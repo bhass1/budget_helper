@@ -9,7 +9,7 @@ mkdir -p $host_in_dir
 mkdir -p $host_out_dir
 cp $CAT_FILE $host_in_dir/.
 container_in_files=()
-for file in $IN_FILES; do
+for file in $(find "${IN_FOLDER}" -iname "*.csv"); do
   cp $file $host_in_dir/.
   container_in_files+=(input/$(basename $file))
 done
