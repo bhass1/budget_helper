@@ -52,7 +52,7 @@ class ExpenseCategorizer:
     detected_bank = ExpenseCategorizer._detect_bank(df_bank_db.columns.tolist())
     if (detected_bank == BankDb.CHASE_CREDIT_0 or 
         detected_bank == BankDb.CHASE_CREDIT_1):
-      df_norm = pd.DataFrame({
+      df_data = pd.DataFrame({
                 ExpenseCategorizer._NORM_COLS[0]: df_bank_db['Transaction Date'], 
                 ExpenseCategorizer._NORM_COLS[1]: df_bank_db['Description'], 
                 ExpenseCategorizer._NORM_COLS[2]: df_bank_db['Amount']
@@ -63,6 +63,7 @@ class ExpenseCategorizer:
                 ExpenseCategorizer._NORM_COLS[1]: df_bank_db['Description'], 
                 ExpenseCategorizer._NORM_COLS[2]: df_bank_db['Amount']
                 })
+      # Amex reports their data inverted from Chase, so we need to invert it here to normalize
       df_data[ExpenseCategorizer._NORM_COLS[2]] = df_data[ExpenseCategorizer._NORM_COLS[2]].apply(lambda x: -1*x)
     elif detected_bank == BankDb.CHASE_SAVING_CHECKING:
       df_data = pd.DataFrame({

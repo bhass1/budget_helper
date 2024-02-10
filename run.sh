@@ -9,10 +9,13 @@ mkdir -p $host_in_dir
 mkdir -p $host_out_dir
 cp $CAT_FILE $host_in_dir/.
 container_in_files=()
+IFS_BAK="$IFS"
+IFS=$'\n'
 for file in $(find "${IN_FOLDER}" -iname "*.csv"); do
-  cp $file $host_in_dir/.
-  container_in_files+=(input/$(basename $file))
+  cp "$file" $host_in_dir/.
+  container_in_files+=(input/$(basename "$file"))
 done
+IFS="$IFS_BAK"
 
 echo "CAT_FILE: $CAT_FILE"
 echo "IN_FILES: ${container_in_files[@]}"
@@ -24,5 +27,5 @@ docker run --rm -it\
   budget_helper\
   python ./src/budget_helper_bhass1/main.py\
     input/$(basename $CAT_FILE)\
-    ${container_in_files[@]}\
+    "${container_in_files[@]}"\
     output/out.xlsx
