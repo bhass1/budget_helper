@@ -3,7 +3,8 @@ set -euo pipefail
 
 docker build . -t budget_helper
 
-host_in_dir=$PWD/input
+tmp_in=$(mktemp -d input.XXXX)
+host_in_dir=$PWD/$tmp_in
 host_out_dir=$PWD/output
 mkdir -p $host_in_dir
 mkdir -p $host_out_dir
@@ -29,3 +30,5 @@ docker run --rm -it\
     input/$(basename $CAT_FILE)\
     "${container_in_files[@]}"\
     output/out.xlsx
+
+rm -r $host_in_dir
