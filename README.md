@@ -16,8 +16,9 @@ Tired of tediously categorizing my past expenses every couple months. Often it's
 
 ```
 CAT_FILE=/path/to/file
+SOURCE_MAP=/path/to/sources.yml
 IN_FOLDER=/path/to/input_files/
-CAT_FILE=$CAT_FILE IN_FOLDER=$IN_FOLDER ./run.sh
+CAT_FILE=$CAT_FILE SOURCE_MAP=$SOURCE_MAP IN_FOLDER=$IN_FOLDER ./run.sh
 ```
 
 You can also set the `LOG_LEVEL` env var to one of the

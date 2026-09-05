@@ -1,5 +1,6 @@
 import difflib
 from enum import Enum, auto
+from pathlib import Path
 import pandas as pd
 import logging
 import re
@@ -29,14 +30,43 @@ class ExpenseCategorizer:
 
   _NORM_COLS = ['TransactionDate', 'Description', 'Amount']
 
-  def __init__(self, category_map, bank_files, output):
+  def __init__(self, category_map, source_map, bank_files, output):
     self.cat_map_path = category_map
+    self.source_map_path = source_map
     self.bank_files = bank_files
     self.output = output
 
     with open(self.cat_map_path, 'r') as file:
       self.merchant_map = yaml.safe_load(file)
+    self._load_source_map(self.source_map_path)
     logging.debug(self.merchant_map)
+
+  def _load_source_map(self, source_map_path):
+    with open(source_map_path, 'r') as file:
+      self.source_map = yaml.safe_load(file)
+
+    if not isinstance(self.source_map, dict) or not self.source_map:
+      raise ValueError('Source map must contain at least one source mapping')
+
+    for source, match_string in self.source_map.items():
+      if not isinstance(source, str) or not isinstance(match_string, str):
+        raise ValueError('Source map keys and values must be strings')
+
+  def _source_for_file(self, in_file):
+    filename = Path(in_file).name.lower()
+    matches = [
+      source for source, match_string in self.source_map.items()
+      if match_string.lower() in filename
+    ]
+
+    if not matches:
+      raise ValueError(f'No source matched input filename: {filename}')
+    if len(matches) > 1:
+      raise ValueError(
+        f'Multiple sources matched input filename {filename}: {matches}'
+      )
+
+    return matches[0]
 
   @staticmethod
   def _detect_bank(columns):
@@ -137,6 +167,7 @@ class ExpenseCategorizer:
   
     for in_file in self.bank_files:
       df_bank_db = pd.read_csv(in_file, index_col=False)
+      source = self._source_for_file(in_file)
   
       logging.debug(df_bank_db)
   
@@ -145,6 +176,7 @@ class ExpenseCategorizer:
       logging.debug(df_data)
   
       df_data = self._categorize(df_data)
+      df_data.insert(0, 'Source', source)
 
       if df_all_data.empty:
         df_all_data = df_data

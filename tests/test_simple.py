@@ -1,5 +1,6 @@
 import os
 import pandas as pd
+import pandas.testing as pdt
 import sys
 import tempfile
 import logging
@@ -12,16 +13,22 @@ def test_simple_e2e(set_log, tmp_path):
   test_out = tmp_path / 'test-simple-out.xlsx'
   expenseCat = ec.ExpenseCategorizer(
       'tests/test-simple/categories.yml',
+      'tests/test-simple/sources.yml',
       ['tests/test-simple/test-amex-credit-simple.csv', 'tests/test-simple/test-chase-credit-simple.csv'],
       test_out
   )
 
   expenseCat.one_shot()
 
-  df_test_out = pd.read_excel(test_out)
-  df_test_out['TransactionDate'] = pd.to_datetime(df_test_out.TransactionDate)
-  logging.info(df_test_out)
-  df_test_golden = pd.read_excel('tests/test-simple/golden.xlsx')
-  df_test_golden['TransactionDate'] = pd.to_datetime(df_test_golden.TransactionDate)
-  logging.info(df_test_golden)
-  assert df_test_out.equals(df_test_golden)
+  output_book = pd.ExcelFile(test_out)
+  golden_book = pd.ExcelFile('tests/test-simple/golden.xlsx')
+  assert output_book.sheet_names == golden_book.sheet_names
+
+  for sheet_name in golden_book.sheet_names:
+    df_test_out = pd.read_excel(output_book, sheet_name=sheet_name)
+    df_test_golden = pd.read_excel(golden_book, sheet_name=sheet_name)
+    df_test_out['TransactionDate'] = pd.to_datetime(df_test_out.TransactionDate)
+    df_test_golden['TransactionDate'] = pd.to_datetime(df_test_golden.TransactionDate)
+    logging.info('%s output:\n%s', sheet_name, df_test_out)
+    logging.info('%s golden:\n%s', sheet_name, df_test_golden)
+    pdt.assert_frame_equal(df_test_out, df_test_golden, check_dtype=False)

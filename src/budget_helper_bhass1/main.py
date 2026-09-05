@@ -8,6 +8,7 @@ import util
 
 @click.command()
 @click.argument('category_map', type=click.Path(exists=True), nargs=1)
+@click.argument('source_map', type=click.Path(exists=True), nargs=1)
 @click.argument('bank_files', type=click.Path(exists=True), nargs=-1)
 @click.argument('output', type=click.Path(
                                 dir_okay=False,
@@ -22,6 +23,7 @@ def main(category_map, bank_files, output):
 
     expenseCat = ExpenseCategorizer(
           click.format_filename(category_map),
+          click.format_filename(source_map),
           [click.format_filename(infile) for infile in bank_files],
           output
     )

@@ -9,6 +9,7 @@ host_out_dir=$PWD/output
 mkdir -p $host_in_dir
 mkdir -p $host_out_dir
 cp $CAT_FILE $host_in_dir/.
+cp $SOURCE_MAP $host_in_dir/.
 container_in_files=()
 IFS_BAK="$IFS"
 IFS=$'\n'
@@ -28,6 +29,7 @@ docker run --rm -it\
   budget_helper\
   python ./src/budget_helper_bhass1/main.py\
     input/$(basename $CAT_FILE)\
+    input/$(basename $SOURCE_MAP)\
     "${container_in_files[@]}"\
     output/out.xlsx
 
