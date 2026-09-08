@@ -1,0 +1,5 @@
+Transaction Date,Post Date,Description,Category,Type,Amount,Memo
+01/05/2022,01/06/2022,KROGER #100,Groceries,Sale,-45.10,
+01/10/2022,01/11/2022,CAFE LUNA,Restaurant,Sale,-28.50,
+02/02/2022,02/03/2022,CITY ELECTRIC,Utilities,Sale,-120.00,
+02/14/2022,02/15/2022,MYSTERY MERCHANT,Other,Sale,-7.25,

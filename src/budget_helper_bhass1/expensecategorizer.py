@@ -163,10 +163,12 @@ class ExpenseCategorizer:
 
   def _new_rows_for_sheet(self, existing_df, new_df):
     """Return the rows in new_df that are not already present in existing_df,
-    deduplicated by (Source, TransactionDate, Description, Amount).
+    deduplicated against existing rows by (Source, TransactionDate,
+    Description, Amount). Duplicate new rows are retained so review mode can
+    decide on each occurrence independently.
 
-    Rows missing any of the key fields are dropped. Duplicates keep the first
-    occurrence. Comparison is string-normalized (case-insensitive, whitespace
+    Rows missing any key field raise a ValueError identifying the input and
+    row number. Comparison is string-normalized (case-insensitive, whitespace
     collapsed) and amount-aware so equivalent rows match.
     """
     key_cols = ['Source', 'TransactionDate', 'Description', 'Amount']
@@ -180,27 +182,23 @@ class ExpenseCategorizer:
         return str(value)
       return re.sub(r'\s+', ' ', str(value).strip().lower())
 
-    def _row_key(row):
-      parts = [_norm(row[col]) for col in key_cols]
-      if any(part is None for part in parts):
-        return None
-      return tuple(parts)
+    def _row_key(row, row_number, input_name):
+      missing = [col for col in key_cols if _norm(row.get(col)) is None]
+      if missing:
+        raise ValueError(
+            f'Input {input_name} row {row_number} is missing required '
+            f'merge field(s): {", ".join(missing)}')
+      return tuple(_norm(row.get(col)) for col in key_cols)
 
     existing_keys = set()
-    for _, row in existing_df.iterrows():
-      key = _row_key(row)
-      if key is not None:
-        existing_keys.add(key)
+    for row_number, (_, row) in enumerate(existing_df.iterrows(), start=2):
+      existing_keys.add(_row_key(row, row_number, 'merge workbook'))
 
-    seen = set()
     keep_idx = []
-    for idx, row in new_df.iterrows():
-      key = _row_key(row)
-      if key is None:
+    for row_number, (idx, row) in enumerate(new_df.iterrows(), start=2):
+      key = _row_key(row, row_number, 'new input')
+      if key in existing_keys:
         continue
-      if key in existing_keys or key in seen:
-        continue
-      seen.add(key)
       keep_idx.append(idx)
 
     return new_df.loc[keep_idx].reset_index(drop=True)
@@ -210,6 +208,62 @@ class ExpenseCategorizer:
       return self.prompt_fn(message, default)
     import click
     return click.confirm(message, default=default)
+
+  def _sheet_action(self, sheet_name, row_count):
+    message = f'Action for {sheet_name} ({row_count} new row(s))'
+    if self.prompt_fn is not None:
+      answer = self.prompt_fn(message, 'add')
+      if answer is True:
+        return 'add'
+      if answer is False:
+        return 'skip'
+      return answer
+
+    import click
+    return click.prompt(message, type=click.Choice(
+        ['add', 'review', 'skip'], case_sensitive=False), default='add')
+
+  @staticmethod
+  def _cell_value(value):
+    if pd.isna(value):
+      return None
+    if isinstance(value, pd.Timestamp):
+      return value.to_pydatetime()
+    return value
+
+  @staticmethod
+  def _tool_column_positions(worksheet):
+    positions = {}
+    for cell in worksheet[1]:
+      if cell.value in TOOL_COLUMNS:
+        positions[cell.value] = cell.column
+    next_column = worksheet.max_column + 1
+    for column in TOOL_COLUMNS:
+      if column not in positions:
+        worksheet.cell(row=1, column=next_column, value=column)
+        positions[column] = next_column
+        next_column += 1
+    return positions
+
+  def _write_merged_workbook(self, path, sheet_data, sheet_order):
+    from openpyxl import load_workbook
+
+    workbook = load_workbook(path)
+    for sheet_name in sheet_order:
+      if sheet_name not in util.month_labels:
+        continue
+      worksheet = workbook[sheet_name]
+      positions = self._tool_column_positions(worksheet)
+      rows = sheet_data.get(sheet_name, pd.DataFrame(columns=TOOL_COLUMNS))
+      start_row = worksheet.max_row + 1
+      for offset, (_, row) in enumerate(rows.iterrows()):
+        row_number = start_row + offset
+        for column in TOOL_COLUMNS:
+          worksheet.cell(
+              row=row_number,
+              column=positions[column],
+              value=self._cell_value(row[column]))
+    workbook.save(path)
 
   def _merge_into_workbook(self, df_month_data):
     """Merge per-month tool data into an existing workbook.
@@ -226,6 +280,7 @@ class ExpenseCategorizer:
       existing_sheets = xls.sheet_names
       existing_data = {s: pd.read_excel(xls, sheet_name=s) for s in existing_sheets}
 
+    rows_to_write = {}
     month_labels = util.month_labels
     for mo in range(12):
       sheet_name = month_labels[mo]
@@ -248,9 +303,8 @@ class ExpenseCategorizer:
                      row['Source'], row['TransactionDate'],
                      row['Description'], row['Amount'])
 
-      decision = self._ask(f'Add {len(rows_to_add)} new row(s) to {sheet_name}?',
-                           default=True)
-      if decision is False:
+      decision = self._sheet_action(sheet_name, len(rows_to_add))
+      if decision == 'skip':
         continue
 
       if decision == 'review':
@@ -265,9 +319,9 @@ class ExpenseCategorizer:
         if rows_to_add.empty:
           continue
 
-      existing_data[sheet_name] = self._append_rows(existing_df, rows_to_add)
+      rows_to_write[sheet_name] = rows_to_add
 
-    self._write_workbook(merge_path, existing_data, existing_sheets)
+    self._write_merged_workbook(merge_path, rows_to_write, existing_sheets)
 
   def _append_rows(self, df, new_rows):
     """Append new_rows' tool columns into df at the first empty tool row,

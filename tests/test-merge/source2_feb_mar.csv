@@ -1,0 +1,6 @@
+Transaction Date,Post Date,Description,Category,Type,Amount,Memo
+02/02/2022,02/04/2022,CITY ELECTRIC,Utilities,Sale,-120.00,
+02/20/2022,02/21/2022,KROGER FUEL #22,Gas,Sale,-35.75,
+03/03/2022,03/04/2022,NO THAI,Restaurant,Sale,-42.00,
+03/03/2022,03/04/2022,NO THAI,Restaurant,Sale,-42.00,duplicate export row
+03/18/2022,03/19/2022,ALDI,Groceries,Sale,-61.20,
