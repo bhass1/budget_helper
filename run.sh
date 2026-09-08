@@ -31,6 +31,6 @@ docker run --rm -it\
     input/$(basename $CAT_FILE)\
     input/$(basename $SOURCE_MAP)\
     "${container_in_files[@]}"\
-    output/out.xlsx
+    "${@:---output output/out.xlsx}"
 
 rm -r $host_in_dir

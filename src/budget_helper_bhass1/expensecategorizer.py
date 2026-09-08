@@ -8,6 +8,8 @@ import yaml
 
 import util
 
+TOOL_COLUMNS = ['Source', 'TransactionDate', 'Description', 'Amount', 'BH_Category']
+
 class BankDb(Enum):
   CHASE_CREDIT_0 = ['Card', 'Transaction Date','Post Date','Description','Category','Type','Amount','Memo']
   CHASE_CREDIT_1 = ['Transaction Date','Post Date','Description','Category','Type','Amount','Memo']
@@ -30,11 +32,13 @@ class ExpenseCategorizer:
 
   _NORM_COLS = ['TransactionDate', 'Description', 'Amount']
 
-  def __init__(self, category_map, source_map, bank_files, output):
+  def __init__(self, category_map, source_map, bank_files, output, merge_file=None):
     self.cat_map_path = category_map
     self.source_map_path = source_map
     self.bank_files = bank_files
     self.output = output
+    self.merge_file = merge_file
+    self.prompt_fn = None
 
     with open(self.cat_map_path, 'r') as file:
       self.merchant_map = yaml.safe_load(file)
@@ -157,6 +161,154 @@ class ExpenseCategorizer:
     df_data = df_data.assign(BH_Category=bh_category)
     return df_data
 
+  def _new_rows_for_sheet(self, existing_df, new_df):
+    """Return the rows in new_df that are not already present in existing_df,
+    deduplicated by (Source, TransactionDate, Description, Amount).
+
+    Rows missing any of the key fields are dropped. Duplicates keep the first
+    occurrence. Comparison is string-normalized (case-insensitive, whitespace
+    collapsed) and amount-aware so equivalent rows match.
+    """
+    key_cols = ['Source', 'TransactionDate', 'Description', 'Amount']
+
+    def _norm(value):
+      if value is None or (isinstance(value, float) and pd.isna(value)):
+        return None
+      if isinstance(value, pd.Timestamp):
+        return value.date().isoformat()
+      if isinstance(value, (int, float)):
+        return str(value)
+      return re.sub(r'\s+', ' ', str(value).strip().lower())
+
+    def _row_key(row):
+      parts = [_norm(row[col]) for col in key_cols]
+      if any(part is None for part in parts):
+        return None
+      return tuple(parts)
+
+    existing_keys = set()
+    for _, row in existing_df.iterrows():
+      key = _row_key(row)
+      if key is not None:
+        existing_keys.add(key)
+
+    seen = set()
+    keep_idx = []
+    for idx, row in new_df.iterrows():
+      key = _row_key(row)
+      if key is None:
+        continue
+      if key in existing_keys or key in seen:
+        continue
+      seen.add(key)
+      keep_idx.append(idx)
+
+    return new_df.loc[keep_idx].reset_index(drop=True)
+
+  def _ask(self, message, default=True):
+    if self.prompt_fn is not None:
+      return self.prompt_fn(message, default)
+    import click
+    return click.confirm(message, default=default)
+
+  def _merge_into_workbook(self, df_month_data):
+    """Merge per-month tool data into an existing workbook.
+
+    Only month sheets (Jan..Dec) are considered. Non-month sheets are left
+    untouched. Within a month sheet, only the tool columns (Source,
+    TransactionDate, Description, Amount, BH_Category) are modified; other
+    columns are preserved. New rows are appended after existing data.
+    """
+    merge_path = self.merge_file
+    logging.info(f'Merging into {merge_path}')
+
+    with pd.ExcelFile(merge_path) as xls:
+      existing_sheets = xls.sheet_names
+      existing_data = {s: pd.read_excel(xls, sheet_name=s) for s in existing_sheets}
+
+    month_labels = util.month_labels
+    for mo in range(12):
+      sheet_name = month_labels[mo]
+      new_rows = df_month_data[mo]
+      if new_rows.empty:
+        continue
+      if sheet_name not in existing_sheets:
+        logging.info(f'Sheet {sheet_name} not in workbook; skipping')
+        continue
+
+      existing_df = existing_data[sheet_name]
+      rows_to_add = self._new_rows_for_sheet(existing_df, new_rows)
+      if rows_to_add.empty:
+        logging.info(f'Sheet {sheet_name}: no new rows to add')
+        continue
+
+      logging.info(f'Sheet {sheet_name}: {len(rows_to_add)} new transaction(s)')
+      for _, row in rows_to_add.iterrows():
+        logging.info('  %s | %s | %s | %s',
+                     row['Source'], row['TransactionDate'],
+                     row['Description'], row['Amount'])
+
+      decision = self._ask(f'Add {len(rows_to_add)} new row(s) to {sheet_name}?',
+                           default=True)
+      if decision is False:
+        continue
+
+      if decision == 'review':
+        chosen = []
+        for _, row in rows_to_add.iterrows():
+          add = self._ask(
+              f'  Add: {row["Source"]} | {row["TransactionDate"]} | '
+              f'{row["Description"]} | {row["Amount"]}?', default=True)
+          if add:
+            chosen.append(row)
+        rows_to_add = pd.DataFrame(chosen, columns=TOOL_COLUMNS)
+        if rows_to_add.empty:
+          continue
+
+      existing_data[sheet_name] = self._append_rows(existing_df, rows_to_add)
+
+    self._write_workbook(merge_path, existing_data, existing_sheets)
+
+  def _append_rows(self, df, new_rows):
+    """Append new_rows' tool columns into df at the first empty tool row,
+    preserving any non-tool columns and their existing rows."""
+    if df.empty:
+      base = pd.DataFrame(columns=TOOL_COLUMNS)
+      for col in new_rows.columns:
+        if col not in base.columns:
+          base[col] = pd.Series(dtype='object')
+      df = base
+
+    result = df.copy()
+    for col in TOOL_COLUMNS:
+      if col not in result.columns:
+        result[col] = pd.Series(dtype='object')
+
+    start = 0
+    for i in range(len(result)):
+      if all(pd.isna(result.loc[i, col]) for col in TOOL_COLUMNS):
+        start = i
+        break
+    else:
+      start = len(result)
+
+    for offset, (_, row) in enumerate(new_rows.iterrows()):
+      target = start + offset
+      for col in TOOL_COLUMNS:
+        result.loc[target, col] = row[col]
+    return result
+
+  def _write_workbook(self, path, sheet_data, sheet_order):
+    with pd.ExcelWriter(path, engine='openpyxl', mode='a',
+                        if_sheet_exists='overlay') as writer:
+      for sheet_name in sheet_order:
+        df = sheet_data[sheet_name]
+        if not df.empty:
+          df.to_excel(writer, sheet_name=sheet_name, index=False)
+        else:
+          pd.DataFrame(columns=TOOL_COLUMNS).to_excel(
+              writer, sheet_name=sheet_name, index=False)
+
   def one_shot(self):
     """ Main function that does it all
 
@@ -190,9 +342,13 @@ class ExpenseCategorizer:
     df_month_data = []
     for mo in range(12):
       df_month_data.append(df_all_data[df_all_data[ExpenseCategorizer._NORM_COLS[0]].dt.month == mo+1])
-  
+
     logging.debug(f'{df_month_data=}')
-  
+
+    if self.merge_file is not None:
+      self._merge_into_workbook(df_month_data)
+      return
+
     #Keep rows that are negative
     #df_data = df_data[df_data.Amount < 0] #FIXME: Do we really want to do this?
   
